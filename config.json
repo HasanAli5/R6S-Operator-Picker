@@ -1,4 +1,4 @@
 {
-    "token":"discordBotToken",
-    "clientId": "clientId"
+    "token":"token",
+    "clientId": "cid"
 }
