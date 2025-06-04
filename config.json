@@ -1,4 +1,4 @@
 {
-    "prefix":"r6",
-    "token":""
+    "token":"discordBotToken",
+    "clientId": "clientId"
 }
