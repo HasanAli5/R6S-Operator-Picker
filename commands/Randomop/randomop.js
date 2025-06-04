@@ -1,6 +1,5 @@
-const Discord = require('discord.js')
-const Operator = require('./operator.json')
-const {prefix} = require('../../config.json')
+const { EmbedBuilder,SlashCommandBuilder } = require('discord.js');
+const Operator = require('./operator.json');
 
 function randint(max,min){
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -8,12 +7,21 @@ function randint(max,min){
 
 module.exports = 
 {
-    name:'s',
-    description:'Get A Random **R6S Operator** using attack or defend!',
-    usage:'[attack/defend]',
-    execute(message, args) 
+    data: new SlashCommandBuilder()
+    .setName('random')
+    .setDescription('Get A Random **R6S Operator**')
+    .addStringOption(option =>
+        option.setName('role')
+        .setDescription('are you playing attacker or defender?')
+        .setRequired(true)
+        .addChoices(
+            { name: 'Attacker', value: 'attack' },
+            { name: 'Defender', value: 'defend' }
+        )
+    ),
+    async execute(interaction) 
     {
-        if (args[0]=="a" || args[0]=="attack"){
+        if (interaction.options.getString("role")=="attack"){
             var authname = "Attacker"
             var oplist=Operator.attackingoperators;
             var oplistimg=Operator.attackimg;
@@ -26,7 +34,7 @@ module.exports =
             var {icon} = require(`./icons/${oplist[number]}/${oplist[number]}.json`);
             var color = "#0aa0ff";
         }
-        else if (args[0]=="d" || args[0]=="defend"){
+        else if (interaction.options.getString("role")=="defend"){
             var authname = "Defender"
             var oplist=Operator.defendingoperators;
             var oplistimg=Operator.defendimg;
@@ -38,24 +46,22 @@ module.exports =
             var gadget = gadget[randint(gadget.length-1,0)];
             var {icon} = require(`./icons/${oplist[number]}/${oplist[number]}.json`);
             var color = "#ff9900";
-
         }
 
-
-
-        const opbed = new Discord.MessageEmbed()
+        const opbed = new EmbedBuilder()
         .setColor(color)
         .setThumbnail(icon)
         .setURL(`https://www.ubisoft.com/en-gb/game/rainbow-six/siege/game-info/operators/${oplist[number]}`)
         .setTitle(oplist[number])
         .setImage(oplistimg[number])
-        .addField("Primary",primary,true)
-        .addField("Secondary",secondary,true)
-        .addField("Gadget",gadget,true)
-        .setFooter(authname)
+        .addFields(
+            {name:"Primary",value:primary},
+            {name:"Secondary",value:secondary},
+            {name:"Gadget",value:gadget})
+        .setFooter({text:authname})
         .setTimestamp()
 
-        message.channel.send({embed: opbed});
+        await interaction.reply({embeds: [opbed]});
     },
 
 }

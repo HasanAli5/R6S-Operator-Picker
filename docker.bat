@@ -1,0 +1,1 @@
+docker build -t r6sopbot:latest .
