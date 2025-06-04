@@ -1,60 +1,53 @@
-const fs = require('fs');
-const Discord = require('discord.js');
-const {token,prefix} = require('./config.json');
 
-const client = new Discord.Client();
-client.commands = new Discord.Collection();
+const fs = require('node:fs');
+const path = require('node:path');
+const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
+const { token } = require('./config.json');
 
-const commandfolders = fs.readdirSync('./commands');
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-for (const folder of commandfolders) {
-	const commandfiles = fs.readdirSync(`./commands/${folder}`).filter(file => file.endsWith('.js'));
-	for (const file of commandfiles) {
-		const command = require(`./commands/${folder}/${file}`);
-		client.commands.set(command.name, command);
+client.commands = new Collection();
+const foldersPath = path.join(__dirname, 'commands');
+const commandFolders = fs.readdirSync(foldersPath);
+
+for (const folder of commandFolders) {
+	const commandsPath = path.join(foldersPath, folder);
+	const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+	for (const file of commandFiles) {
+		const filePath = path.join(commandsPath, file);
+		const command = require(filePath);
+		if ('data' in command && 'execute' in command) {
+			client.commands.set(command.data.name, command);
+		} else {
+			console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+		}
 	}
 }
 
-client.once('ready',() =>{
-    console.log('Logged In As',client.user.username);
-    client.user.setActivity(`Truckers.FM | ${prefix}help`,{type:'LISTENING'});
+client.once(Events.ClientReady, readyClient => {
+	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+    client.user.setActivity('Rainbow Six Siege',{type:'PLAYING'});
 });
 
-client.on('message',message => {
-    if (!message.content.startsWith(prefix) || message.author.bot) return;
-    const args = message.content.slice(prefix.length).trim().split(/ +/);
-    const command = args.shift().toLowerCase();
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	const command = interaction.client.commands.get(interaction.commandName);
 
-    if (!client.commands.has(command)) return;
+	if (!command) {
+		console.error(`No command matching ${interaction.commandName} was found.`);
+		return;
+	}
 
-    try 
-    {
-        client.commands.get(command).execute(message, args);
-    }
-    catch (error)
-    {
-        if (error = TypeError)
-        {
-            message.channel.send(new Discord.MessageEmbed()
-            .setColor('#ff0000')
-            .setTitle('Not Right Usage')
-            .setDescription(`**usage:** \`${prefix}s a\` *[For Attacker]* or \`${prefix}s d\` *[For Defender]*`)
-            .setFooter('Error!')
-            .setTimestamp());
-            var skip=true;
-        }
-        else
-        {
-            console.error(error);
-            message.channel.send(new Discord.MessageEmbed()
-            .setColor('#ff0000')
-            .setTitle('There was an error trying to execute that command!')
-            .setDescription(`try **${prefix}help** to check commands available.`)
-            .setFooter('Error!')
-            .setTimestamp());
-        }
-    }
-    
+	try {
+		await command.execute(interaction);
+	} catch (error) {
+		console.error(error);
+		if (interaction.replied || interaction.deferred) {
+			await interaction.followUp({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
+		} else {
+			await interaction.reply({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
+		}
+	}
 });
 
 client.login(token);
